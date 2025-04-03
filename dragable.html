@@ -1,0 +1,106 @@
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-org-chart@3.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-flextree@2.1.2/build/d3-flextree.js"></script>
+
+<!--
+  This is the code which is used to show of feature , other parts of the code are part of the boilerplate
+
+  Except for nodeUpdate and nodeContent
+
+  In nodeUpdate we got rid of default behavior of highlighting and in nodeContent we used `_highlighted` and `_upToTheRootHighlighted` properties for dynamic styling. These properties are assigned automatically
+
+-->
+<input
+  type="search"
+  placeholder="search by name"
+  oninput="filterChart(event)"
+/>
+
+<button
+  onclick="chart.removeNode(id='103').render()"
+>
+  Remove node
+</button>
+<button onclick="chart.setHighlighted('103').render().fit()">Highlight 103</button>
+<button onclick="chart.setUpToTheRootHighlighted('103').render().fit()">
+  Highlight 103 to root
+</button>
+<button onclick="chart.clearHighlighting()">clear</button>
+
+<!--
+  End of adding node functionality
+-->
+
+<div class="chart-container"></div>
+
+<script>
+  var chart = null;
+
+  // This is the data used - https://github.com/bumbeishvili/sample-data/blob/main/data-oracle.csv
+  d3.csv(
+    'https://raw.githubusercontent.com/bumbeishvili/sample-data/main/data-oracle.csv'
+  ).then((data) => {
+    chart = new d3.OrgChart()
+      .nodeHeight((d) => 85 + 25)
+      .nodeWidth((d) => 220 + 2)
+      .childrenMargin((d) => 50)
+      .compactMarginBetween((d) => 35)
+      .compactMarginPair((d) => 30)
+      .neighbourMargin((a, b) => 20)
+      .linkUpdate(function (d) {
+        d3.select(this).attr('stroke', '#000000').attr('stroke-width', 1);
+      })
+      .nodeUpdate(function () {
+        // Needed to disable default highlight behavior
+        d3.select(this).select('.node-rect').attr('stroke', 'none');
+      })
+      .nodeContent(function (d, i, arr, state) {
+        const color = '#FFFFFF';
+        const imageDiffVert = 25 + 2;
+        return `
+                <div style='width:${d.width}px;height:${d.height}px;padding-top:${imageDiffVert - 2}px;padding-left:1px;padding-right:1px'>
+                        <div style="font-family: 'Inter', sans-serif;background-color:${color};  margin-left:-1px;width:${d.width - 2}px;height:${d.height - imageDiffVert}px;border-radius:10px;border: ${d.data._highlighted || d.data._upToTheRootHighlighted ? '5px solid #E27396' : '1px solid #E4E2E9'}" >
+                            <div style="display:flex;justify-content:space-between;margin-top:5px;margin-right:8px;margin-left:8px">
+                                <div>#$${d.data.id}</div>
+                                <button onclick="removeNode('${d.data.id}')" style="background-color: #E27396; color: white; border: none; border-radius: 5px; padding: 2px 6px; cursor: pointer;">X</button>
+                            </div>
+                            <div style="background-color:${color};margin-top:${-imageDiffVert - 20}px;margin-left:${15}px;border-radius:100px;width:50px;height:50px;" ></div>
+                            <div style="margin-top:${-imageDiffVert - 20}px;">   <img src=" ${d.data.image}" style="margin-left:${20}px;border-radius:100px;width:40px;height:40px;" /></div>
+                            <div style="font-size:15px;color:#08011E;margin-left:20px;margin-top:10px">  ${d.data.name} </div>
+                            <div style="color:#716E7B;margin-left:20px;margin-top:3px;font-size:10px;"> ${d.data.position} </div>
+                        </div>
+                    </div>
+                            `;
+      })
+      .container('.chart-container')
+      .data(data)
+      .render();
+  });
+
+  // Function to remove a node
+  function removeNode(nodeId) {
+    const attrs = this.getChartState();
+        const node = attrs.allNodes.filter(({ data }) => attrs.nodeId(data) == nodeId)[0];
+        if (!node) {
+            console.log(`ORG CHART - REMOVE - Node with id "${nodeId}" not found in the tree`);
+            return this;
+        }
+
+        // Remove all node childs
+        // Retrieve all children nodes ids (including current node itself)
+        node.descendants()
+            .forEach(d => d.data._filteredOut = true)
+
+        const descendants = this.getNodeChildren(node, [], attrs.nodeId);
+        descendants.forEach(d => d._filtered = true)
+
+        // Filter out retrieved nodes and reassign data
+        attrs.data = attrs.data.filter(d => !d._filtered);
+
+        const updateNodesState = this.updateNodesState.bind(this);
+        // Update state of nodes and redraw graph
+        updateNodesState();
+
+        return this;
+    }
+</script>
