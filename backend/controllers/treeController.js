@@ -1,5 +1,14 @@
-const FamilyMember = require('../models/FamilyMember');
+
+
 const Relationship = require('../models/Relationship');
+const express = require('express');
+const cors = require('cors');
+
+const bodyParser = require('body-parser');
+const app = express();
+
+app.use(cors());
+app.use(bodyParser.json());
 
 // Add a new family member
 exports.addMember = async (req, res) => {
@@ -27,7 +36,8 @@ exports.addMember = async (req, res) => {
 // Get all family members
 exports.getAllMembers = async (req, res) => {
     try {
-        const members = await FamilyMember.find({ createdBy: req.user.userId });
+        // const members = await FamilyMember.find({ createdBy: req.user.userId });
+        const members = await FamilyMember.find();
         res.json(members);
     } catch (error) {
         console.error('Get all members error:', error);
@@ -185,3 +195,17 @@ exports.deleteRelationship = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 }; 
+
+
+const FamilyMember = require('../models/FamilyMember');
+
+exports.createFamilyMember = async (req, res) => {
+  try {
+    const newMember = new FamilyMember(req.body);
+    const savedMember = await newMember.save();
+    res.status(201).json(savedMember);
+  } catch (err) {
+    console.error('Create family member error:', err);
+    res.status(400).json({ message: err.message });
+  }
+};
